@@ -1,0 +1,286 @@
+## USANDO EL PROGRAMA R ## 
+install.packages("ploty")
+install.packages("reshape2")
+install.packages("dplyr")
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(reshape2)
+
+#1. Descargar el archivo
+MICRO<-readxl::read_excel("C:/Users/Sebastian Marin/Dropbox/Data/BD PROYECTO BIG DATA2.xlsx",sheet = 7)
+na.omit(MICRO)
+View(MICRO)
+MACRO<-readxl::read_excel("C:/Users/Sebastian Marin/Dropbox/Data/BD PROYECTO BIG DATA2.xlsx",sheet = 6)
+na.omit(MACRO)
+View(MACRO)
+COMPANY<-readxl::read_excel("C:/Users/Sebastian Marin/Dropbox/Data/BD PROYECTO BIG DATA2.xlsx",sheet = 8)
+na.omit(COMPANY)
+View(COMPANY)
+
+#2. Agregar columnas con calculos 
+COMPANY<-mutate(COMPANY,Bruta=Ventas-Costo)
+COMPANY<-mutate(COMPANY,Operativa=Bruta-Gastos)
+COMPANY<-mutate(COMPANY,MargenBr=Bruta/Ventas*100)
+COMPANY<-mutate(COMPANY,MargenOp=Operativa/Ventas*100)
+MACRO<-mutate(MACRO,PIB=PIB_Primario+PIB_Secundario+PIB_Terciario)
+
+#3. Filtrar Data Frames
+names(MICRO)
+Consumo<-filter(MICRO,Giro %in% c("Productos de Consumo"))
+MACROMOD<-filter(MACRO,Anno>=2015)#Filtramos desde 2015 para usar en el modelo
+
+Bimbo<-filter(Consumo,Empresa %in% c("Bimbo"))#?nicamente extrae la empresa Bimbo
+Walmex<-filter(Consumo,Empresa %in% c("Walmex"))
+Inf2018<-filter(Bimbo, Anno == 2018)
+Inf2018consumo<-filter(Consumo, Anno == 2018)
+
+#4. Histograma
+hist(Bimbo$Ventas)
+hist(x = Bimbo$Ventas, main = "Histograma de Ventas", 
+     xlab = "Ventas", ylab = "Frecuencia")
+hist(Bimbo$Costo)
+hist(x = Bimbo$Costo, main = "Histograma de Costo", 
+     xlab = "Costo", ylab = "Frecuencia")
+hist(Bimbo$Gastos)
+hist(x = Bimbo$Gastos, main = "Histograma de Gastos", 
+     xlab = "Gastos", ylab = "Frecuencia")
+hist(Walmex$Ventas)
+hist(MACRO$TC)
+hist(MACRO$PIB_Primario)
+hist(MACRO$IPC)
+
+
+plot(x = Bimbo$Anno, y = Bimbo$Ventas, main = "Ventas A?o", 
+     xlab = "Anno", ylab = "Ventas", 
+     col= c(blues9))#visualizar el mov de ventas Bimbo por a?o
+
+ggplot(Inf2018,aes(x=Trimestre, y=Ventas, colours(distinct = FALSE)))+
+  geom_point(shape=25, fill="blue", color="darkred", size=3)+
+  geom_smooth()#Visualizar ventas por trimestre tomando de ref a?o 2018
+
+ggplot(MACRO,aes(x=Anno, y=TC, colours(distinct = FALSE)))+
+  geom_point(shape=25, fill="blue", color="darkred", size=3)+
+  geom_smooth()#visualizar el movimiento del T.C
+
+
+#5. Modelo
+M1<-lm(Bimbo$Ventas~MACROMOD$PIB);summary(M1)
+M1.1<-lm(Bimbo$Ventas~MACROMOD$PIB+MACROMOD$TIIE);summary(M1.1)
+
+M2<-lm(Bimbo$Ventas~MACROMOD$Inflacion);summary(M2)
+M2.1<-lm(Bimbo$Ventas~MACROMOD$Inflacion+MACROMOD$PIB_Primario);summary(M2.1)
+
+M3<-lm(Bimbo$Ventas~Walmex$Ventas);summary(M3)
+
+length(Bimbo$Ventas)#se us? como prueba porque originalmente me marcaba error
+length(MACRO$PIB)#se us? como prueba porque originalmente me marcaba error
+
+plot(M1)
+
+## USANDO EL PROGRAMA COLAB (PHYTON) ##
+#Importamos datos
+
+import pandas as pd 
+from google.colab import files 
+uploaded=files.upload()
+import io
+MICRO = pd.read_excel(io.BytesIO(uploaded['BD_DATA.xlsx']),sheet_name=1)
+
+import pandas as pd 
+from google.colab import files 
+uploaded=files.upload()
+import io
+MACRO = pd.read_excel(io.BytesIO(uploaded['BD_DATA.xlsx']),sheet_name=2)
+MACRO
+
+import numpy as np
+
+MICRO.keys()
+
+MICRO.head()
+
+#Limpieza de datos Nulos
+
+MICRO.isna()
+
+MICRO.isna().sum(axis=0)
+
+MICRO.isna().sum(axis=1)
+
+MICRO_no_nans = MICRO.dropna(axis=0, how='all')
+MICRO_no_nans = MICRO_no_nans.dropna(axis=1, how='all')
+
+MICRO_no_nans
+
+MICRO_no_nans.dropna(axis=0)
+
+#Definicion de funciones y agregación de nuevas columnas
+
+def ut_bruta(ventas,costo):
+  resultado= ventas-costo
+  return resultado
+
+def ut_operativa(bruta,gastos):
+  resultado= bruta-gastos
+  return resultado
+
+def estatus(operativa):
+  if operativa>0:
+   return "Utilidad"
+  else:
+   return "Perdida"
+
+MICRO.columns
+
+def SUMA(uno,dos,tres) :
+  return uno+dos+tres
+
+MICRO["Utilidad Bruta"]=pd.Series(ut_bruta(MICRO['Ventas'],MICRO['Costo']))
+MICRO
+
+MICRO["Utilidad Operativa"]=pd.Series(ut_operativa(MICRO['Utilidad Bruta'],MICRO['Gastos']))
+MICRO
+
+MACRO["PIB"]=pd.Series(SUMA(MACRO['PIB_Primario'],MACRO['PIB_Secundario'],MACRO['PIB_Terciario']))
+MACRO
+
+#Segmentación de los datos
+
+Servicios = MICRO[MICRO['Giro'] == "Productos de Consumo"]
+Servicios
+
+Años_Ventas_Mayor_10MDP=Servicios[Servicios['Ventas'] > 10000000]
+
+Años_Ventas_Mayor_10MDP
+
+Años_Ut_Mayor_10MDP=Años_Ventas_Mayor_10MDP[Años_Ventas_Mayor_10MDP['Utilidad Bruta'] > 10000000]
+
+Años_Ut_Mayor_10MDP
+
+Año_2014 = Servicios[Servicios["Anno"] == 2014]
+Año_2014
+
+CEMEX = MICRO[MICRO['Empresa'] == "CEMEX"]
+CEMEX
+
+WALMART = Servicios[Servicios['Empresa'] == "Walmex"]
+WALMART
+
+#Análisis de disperción de los datos
+
+Desv_Vtas_CEMEX= CEMEX['Ventas'].std()
+
+Desv_Vtas_CEMEX #Mientras mayor es la desviación estándar, mayor es la dispersión de la población.
+
+print(f'Valor mínimo: {CEMEX["Ventas"].min()}')
+print(f'Percentil 10: {CEMEX["Ventas"].quantile(0.1)}')
+print(f'Percentil 25: {CEMEX["Ventas"].quantile(0.25)}')
+print(f'Percentil 50: {CEMEX["Ventas"].median()}')
+print(f'Percentil 75: {CEMEX["Ventas"].quantile(0.75)}')
+print(f'Percentil 90: {CEMEX["Ventas"].quantile(0.9)}')
+print(f'Valor máximo: {CEMEX["Ventas"].max()}')
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.stats import skew, kurtosis
+
+sns.set(style="whitegrid")
+sns.boxplot(x=CEMEX['Ventas'])
+plt.axvline(CEMEX['Ventas'].mean(), c='y') #Mostramos la distribución de una sola variable
+#Asimetría negativa o sesgada a la izquierda ya que la parte más larga es la inferior a la mediana.
+#Los datos se concentran en la parte superior de la distribución. La media suele ser menor que la mediana.
+
+#Análisis de la distribución de los datos
+
+sns.set(style='ticks')
+sns.distplot(CEMEX['Ventas'], kde=False, norm_hist=False, bins=20)
+
+ax = sns.distplot(CEMEX['Ventas'], kde=False, norm_hist=False)
+ax.set(title='Ventas de CEMEX', xlabel='Ventas', ylabel='Conteo');
+
+ax = sns.distplot(CEMEX['Ventas'], hist=False, kde_kws = {'shade': True}, label='Bachoco')
+sns.distplot(WALMART['Ventas'], hist=False, kde_kws = {'shade': True}, ax=ax, label='Walmart')
+ax.set_title('Distribuciones de las ventas de Cemex y Walmart', fontsize=13, pad=15);
+ax.set(xlabel='Ventas');
+ax.legend(loc='upper right'); #Gráfica de densidad para comparar 2 distribuciones en este caso la Distribución de las ventas
+
+#Gráfica por trimestre
+
+#Análisis de regresión
+#Juntamos el dataframe de CEMEX y MACRO para tener todas las variables en un dataframe y poder graficar el mapa de calor.
+
+CEMEXDF=pd.DataFrame(CEMEX)
+
+CEMEXDF
+
+MACRODF=pd.DataFrame(MACRO)
+
+MACRODF
+
+CEMEX_MACRO=pd.merge(CEMEXDF,MACRODF)
+
+CEMEX_MACRO
+
+CEM_MAC = CEMEX_MACRO.drop(columns=['Confianza_Consumidor','Var_IPC','IPC','ActivoCir',
+                                       'Clientes','ActivoFijo','PasivoCir','Capital','PIB_Primario',
+                                       'PIB_Secundario','PIB_Terciario','Utilidad Bruta','Utilidad Operativa'])
+
+sns.scatterplot(CEM_MAC['Ventas'], CEM_MAC['Gastos'], hue=CEM_MAC['Trimestre']
+                ,style=CEM_MAC['Trimestre']);
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(CEM_MAC.corr(), annot=True, linewidths=.5);
+#Mientras mayor sea el color mayor correlación existirá entre nuestras variables esto aplica para negativos y positivos
+#podemos observar el ejemplo de dos variables como son el consumo_privado y la TIIE de -0.48
+
+sns.pairplot(CEM_MAC); #Esquema de dispersión en el cual se puede observar que nuestros datos son muy dispersos
+
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+Correlacion = CEM_MAC['TIIE'].corr(CEM_MAC['Ventas'])
+
+Correlacion #Existe una correlación negativa entre las ventas y la TIIE (Tasa de interés interbancaria de equilibrio)
+
+lr = LinearRegression()
+
+lr.fit(CEM_MAC['TIIE'].to_frame(), CEM_MAC['Ventas']) #con LinearRegressin se busca predecir las ventas
+
+y_predict = lr.predict(CEM_MAC['TIIE'].to_frame()) #Estamos prediciendo a traves de la TIIE las ventas, observamos que hay mucha dispersión entre nuestros datos.
+
+sns.scatterplot(CEM_MAC['TIIE'], CEM_MAC['Ventas'], s=40);
+sns.lineplot(CEM_MAC['TIIE'], y_predict, color='g'); #Una vez que tenemos ambos resultados se busca graficar y se muestra la dispersión que muestran nuestros datos
+                                                       #asi como la correlación negativa que existe
+
+R2= lr.score(CEM_MAC['TIIE'].to_frame(), CEM_MAC['Ventas'])
+
+R2 #se espera ver que tanto explica la variable independiente con la dependiente dando un resultado muy bajo
+
+from sklearn.model_selection import train_test_split
+
+X = CEM_MAC[['TIIE', 'PIB']]
+y = CEM_MAC['Ventas']
+
+#se plantea hacer una regresión multiple esperando que nuestro resultado sea mayor
+
+X_training, X_test, y_training, y_test = train_test_split(X, y, test_size=0.3, shuffle=True)
+
+lr = LinearRegression()
+lr.fit(X_training, y_training)
+
+lr.score(X_test, y_test)#nuestros resultados utilizando x, y trainining nos muestra otro negativo
+
+lr_2 = LinearRegression()
+lr_2.fit(X, y)
+
+lr_2.score(X, y) #Utilizamos únicamente x, y sin utilizar "training" esperando que la R2 aumentara
+
+#Concluimos que se muestra una dispersipon muy alta por lo que nuestro modelo de r2 fue muy bajo, a consecuencia no se pudo explicar las ventas, aún intentando con 2 variables.
+#Por lo anterior se buscaria implentar un modelo de series de tiempo esperando que este sí muestre un mejor resultado.
+
+MICRO["Validación Utilidad Operativa"]=MICRO.apply(lambda x: 'Utilidad' if x['Utilidad Operativa'] > 0 else 'Pérdida', axis = 1)
+
+MICRO[MICRO['Utilidad Operativa'] < 0]
+
+MICRO
